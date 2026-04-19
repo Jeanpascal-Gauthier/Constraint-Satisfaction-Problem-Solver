@@ -151,5 +151,34 @@ def is_consistent(var, assignment, con_lookup):
             return False
     return True
 
+def backtrack(var_map, con_lookup, assignment, order):
+    if len(assignment) == len(var_map):
+        print_branch(assignment, order, "solution")
+        return True
+
+    var = variable_selection(var_map, con_lookup, assignment)
+    values = order_values(var, var_map, con_lookup, assignment)
+
+    for val in values:
+        assignment[var] = val
+        order.append(var)
+
+        if is_consistent(var, assignment, con_lookup):
+            if backtrack(var_map, con_lookup, assignment, order):
+                return True
+        else:
+            print_branch(assignment, order, "failure")
+
+        del assignment[var]
+        order.remove(var)
+
+    return False
+
+def print_branch(assignment, order, status):
+    parts = []
+    for var in order:
+        parts.append(var + "=" + str(assignment[var]))
+    print(", ".join(parts) + "  " + status)
+
 if __name__ == "__main__":
     main()
