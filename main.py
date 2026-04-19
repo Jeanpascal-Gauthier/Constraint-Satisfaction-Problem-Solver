@@ -67,7 +67,7 @@ def variable_selection(var, con_lookup, assignment):
         count = count_unassigned_constraints(var, con_lookup, assignment)
         if count == max_constraints:
             candidates2.append(var)
-            
+
     if len(candidates2) == 1:
         return candidates2[0]
     
@@ -85,6 +85,71 @@ def count_unassigned_constraints(var, con_lookup, assignment):
             count += 1
     
     return count
+
+def order_values(var, var_map, con_lookup, assignment):
+    value_counts = []
+
+    for val in var_map:
+        count = 0
+        for con in con_lookup:
+            var1, op, var2 = con
+            other = var2 if var1 == var else var1
+
+            if other in assignment:
+                continue
+
+            for other_val in var_map[other]:
+                if not check_values(var, val, other, other_val, con):
+                    count += 1
+
+        value_counts.append((count, val))
+
+    value_counts.sort(key=lambda x: (x[0], x[1]))
+
+    result = []
+    for count, val in value_counts:
+        result.append(val)
+    
+    return result
+
+def check_values(var1, val1, var2, val2, con):
+    con_var1, op, con_var2 = con
+
+    if var1 == con_var2:
+        val1, val2 = val2, val1
+
+    if op == '=':
+        return val1 == val2
+    elif op == '!':
+        return val1 != val2
+    elif op == '>':
+        return val1 > val2
+    elif op == '<':
+        return val1 < val2
+
+def check_constraint(con, assignment):
+    var1, op, var2 = con
+
+    if var1 not in assignment or var2 not in assignment:
+        return True
+
+    val1 = assignment[var1]
+    val2 = assignment[var2]
+
+    if op == '=':
+        return val1 == val2
+    elif op == '!':
+        return val1 != val2
+    elif op == '>':
+        return val1 > val2
+    elif op == '<':
+        return val1 < val2
+    
+def is_consistent(var, assignment, con_lookup):
+    for con in con_lookup[var]:
+        if not check_constraint(con, assignment):
+            return False
+    return True
 
 if __name__ == "__main__":
     main()
