@@ -36,12 +36,16 @@ def main():
         con_lookup[var1].append(con)
         con_lookup[var2].append(con)
 
+    assignment = {}
+    order = []
+    backtrack(var_map, con_lookup, assignment, order, procedure)
 
-def variable_selection(var, con_lookup, assignment):
+
+def variable_selection(var_map, con_lookup, assignment):
     unassigned = []
-    for var in var_map:
-        if var not in assignment:
-            unassigned.append(var)
+    for v in var_map:
+        if v not in assignment:
+            unassigned.append(v)
 
     min_domain = len(var_map[unassigned[0]])
     for var in unassigned:
@@ -89,9 +93,9 @@ def count_unassigned_constraints(var, con_lookup, assignment):
 def order_values(var, var_map, con_lookup, assignment):
     value_counts = []
 
-    for val in var_map:
+    for val in var_map[var]:
         count = 0
-        for con in con_lookup:
+        for con in con_lookup[var]:
             var1, op, var2 = con
             other = var2 if var1 == var else var1
 
@@ -151,7 +155,7 @@ def is_consistent(var, assignment, con_lookup):
             return False
     return True
 
-def backtrack(var_map, con_lookup, assignment, order):
+def backtrack(var_map, con_lookup, assignment, order, procedure):
     if len(assignment) == len(var_map):
         print_branch(assignment, order, "solution")
         return True
@@ -163,16 +167,55 @@ def backtrack(var_map, con_lookup, assignment, order):
         assignment[var] = val
         order.append(var)
 
-        if is_consistent(var, assignment, con_lookup):
-            if backtrack(var_map, con_lookup, assignment, order):
-                return True
+        if procedure == "fc":
+            pruned = forward_check(var, val, var_map, con_lookup, assignment)
+            if pruned is None:
+                print_branch(assignment, order, "failure")
+            else:
+                if backtrack(var_map, con_lookup, assignment, order, procedure):
+                    return True
+                restore(var_map, pruned)
         else:
-            print_branch(assignment, order, "failure")
+            if is_consistent(var, assignment, con_lookup):
+                if backtrack(var_map, con_lookup, assignment, order, procedure):
+                    return True
+            else:
+                print_branch(assignment, order, "failure")
 
         del assignment[var]
         order.remove(var)
 
     return False
+
+def forward_check(var, val, var_map, con_lookup, assignment):
+    pruned = {}
+
+    for con in con_lookup[var]:
+        var1, op, var2 = con
+        other = var2 if var1 == var else var1
+
+        if other in assignment:
+            continue
+
+        if other not in pruned:
+            pruned[other] = []
+
+        for other_val in var_map[other][:]:  
+            if not check_values(var, val, other, other_val, con):
+                var_map[other].remove(other_val)
+                pruned[other].append(other_val)
+
+        if len(var_map[other]) == 0:
+            restore(var_map, pruned)
+            return None
+
+    return pruned
+
+def restore(var_map, pruned):
+    for var in pruned:
+        for val in pruned[var]:
+            var_map[var].append(val)
+        var_map[var].sort()
 
 def print_branch(assignment, order, status):
     parts = []
